@@ -1,0 +1,84 @@
+{
+    "requestable": [
+        "info_session",
+        "info_person",
+        "info_food"
+    ],
+    "count_session": [
+        1,
+        2,
+        3
+    ],
+    "count_person": [
+        1,
+        2,
+        3
+    ],
+    "informable": {
+        "goal_session": [
+            true,
+            false
+        ],
+        "goal_person": [
+            true,
+            false
+        ],
+        "goal_food": [
+            true,
+            false
+        ],
+        "primary_goal": [
+            "session",
+            "person",
+            "food"
+        ],
+        "primary_interest": [
+            "I1",
+            "I2",
+            "I3",
+            "I4",
+            "I5",
+            "I6",
+            "I7",
+            "I8",
+            "I9",
+            "I10"
+        ],
+        "secondary_interest": [
+            "I1",
+            "I2",
+            "I3",
+            "I4",
+            "I5",
+            "I6",
+            "I7",
+            "I8",
+            "I9",
+            "I10"
+        ],
+        "first_time": [
+            true,
+            false
+        ],
+        "met_before": [
+            true,
+            false
+        ],
+        "feedback": [
+            "good",
+            "bad"
+        ],
+        "send_msg_on_tlink": [
+            true,
+            false
+        ],
+        "another_reco": [
+            true,
+            false
+        ],
+        "selfie": [
+            true,
+            false
+        ]
+    }
+}

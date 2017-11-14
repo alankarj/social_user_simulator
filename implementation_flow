@@ -1,0 +1,14 @@
+Flow of implementation:
+
+run.py:
+1) Calls constructors for agent, user_sim and dialog_manager class
+
+2) dialog_manager.initialize_episode()
+    a) state_tracker.initialize_episode()
+    b) user_action = self.user.initialize_episode()
+        i) self._sample_action()
+    c) state_tracker.update(user_action = self.user_action)
+
+3) dialog_manager.next_turn():
+    a) state_tracker.get_state_for_agent()
+     b) agent.state_to_action(self.state)
