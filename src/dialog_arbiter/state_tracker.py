@@ -19,6 +19,8 @@ class StateTracker:
     def initialize(self, slot_set):
         self.slot_set = slot_set
         self.turn = 1
+        self.slot_set['turn'] = {}
+        self.slot_set['turn'] = self.turn
         self.count_slots = dialog_config.count_slots
         self.count_reco = {}
         for c_slot in self.count_slots:
@@ -33,20 +35,22 @@ class StateTracker:
             self.slot_set['num_accepted'][c_slot] = {}
             for r_slot in self.reward_slots:
                 self.num_accepted[c_slot][r_slot] = 0
-                self.slot_set['num_accepted'][c_slot][r_slot] = self.num_accepted[c_slot][r_slot]
+                self.slot_set['num_accepted'][c_slot][r_slot] = \
+                self.num_accepted[c_slot][r_slot]
 
         self.reward = 0
         self.dialog_over = False
 
     def update(self, agent_action=None, user_action=None):
         self.turn += 1
+        self.slot_set['turn'] = self.turn
 
         if agent_action:
             if agent_action['phase'] != self.phase:
                 self.phase = agent_action['phase']
-                print("-----------------------------------------------", end='')
+                print("-" * 50, end='')
                 print(self.phase, end='')
-                print("-----------------------------------------------")
+                print("-" * (50 - len(self.phase)))
 
             act = agent_action['act']
             inform_slots = agent_action['inform_slots'].keys()
@@ -81,7 +85,8 @@ class StateTracker:
                                 if self.phase == c_slot + "_recommendation":
                                     self.num_accepted[c_slot][r_slot] += 1
                                     self.slot_set['num_accepted'][c_slot][
-                                        r_slot] = self.num_accepted[c_slot][r_slot]
+                                        r_slot] = self.num_accepted[c_slot][
+                                        r_slot]
 
         # print(self.reward)
         # print(self.num_accepted)

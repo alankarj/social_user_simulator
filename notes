@@ -1,0 +1,25 @@
+The current model for user simulator is a bit restrictive as it only provides the user with 4 possible dialog acts: greeting, inform, null and bye. In fact, most of the acts are either inform or null.
+
+The act 'null' is an umbrella term that can encompass a variety of user acts (one example is ack (for acknowledgments)).
+greeting and bye are used only in the beginning and the end of the conversation.
+inform is used by the user everywhere else.
+
+Capabilities not modeled by the current design:
+1) request actions by the user, reqalts (request alternatives)
+
+Thus, in the current form, it's a completely system-initiated dialog system, which is closer to SARA design (as compared to user-initiated dialog system).
+
+Agent: First session, then person, then food. Doesn't take primary_goal into account. Reward should depend on primary_goal so that agent can learn to make primary_goal-related recommendations first.
+--------
+In absence of ASR errors:
+----------
+What do we want our agent to learn and how?
+
+What choice points does it have? (These are the things we can't include as part of our input features for predicting prob_feedback_good, prob_another, prob_msg_accept)
+- When to transition from one recommendation phase to another.
+What choice points does it not have?
+
+In other user-initiated settings, there are choices wrt:
+1) Slot ordering {1 -> 2 -> 3 -> 5 -> 4 -> 6}
+2) Number of slots asked in a particular utterance {(1, 2) -> (4, 6) -> 5 -> 3}
+

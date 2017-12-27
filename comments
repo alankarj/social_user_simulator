@@ -1,0 +1,2 @@
+1) If null goal, then some order (session -> person -> food)
+2) null should be replaced by a more appropriate user action (based on data)

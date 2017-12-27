@@ -32,7 +32,7 @@ class DialogArbiter:
         reward, dialog_over, state = self.state_tracker.update(
             agent_action=self.agent_action)
         print("Agent: ", end="")
-        #print(self.agent_action)
+        # print(self.agent_action)
         dialog_config.print_info(self.agent_action)
 
         user_action = self.user.next(self.agent_action)
@@ -63,16 +63,24 @@ if __name__ == "__main__":
     while not dialog_over:
         reward, dialog_over, state = arbiter.next()
 
-    print("Reward:")
-    print(reward)
-    print("")
+    print()
+    print("STATS:")
+    print("Reward: " + str(reward))
+    print()
+    print("Turns: " + str(state['turn'] / 2 - 1))
+    print()
 
     count_slots = dialog_config.count_slots
     reward_slots = dialog_config.reward.keys()
 
     for c_slot in count_slots:
-        print("Counts for " + c_slot + ":")
+        print("Total " + c_slot + " recommendations: ", end="")
         print(state[c_slot])
         for r_slot in reward_slots:
-            print("Num-accepted for " + c_slot + ", " + r_slot + ":")
-            print(state['num_accepted'][c_slot][r_slot])
+            if (r_slot == 'feedback'):
+                print("Feedback good count: " + str(state['num_accepted'][
+                                                        c_slot][r_slot]))
+            else:
+                print("Top-link message count: " + str(
+                    state['num_accepted'][c_slot][r_slot]))
+        print()

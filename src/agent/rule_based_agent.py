@@ -229,7 +229,7 @@ class RuleBasedAgent:
 
             else:
                 if state[reco_type] == 0 or user_inform_slots['another_reco']:
-                    print(state[reco_type])
+                    #print(state[reco_type])
                     act = 'inform'
                     inform_slots = {reco_type: "info_" + reco_type}
                     agent_action = self.construct_action(act, phase,

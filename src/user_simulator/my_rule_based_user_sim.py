@@ -163,9 +163,6 @@ class RuleBasedUserSimulator:
             user_action['act'] = 'inform'
             user_action['inform_slots'] = self.process_request_act(agent_action)
 
-        #else:
-        #    user_action['act'] = ''
-
         self.agenda.append(user_action)
         #print(user_action)
         #dialog_config.print_info(user_action)
