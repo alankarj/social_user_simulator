@@ -21,6 +21,7 @@ class StateTracker:
         self.turn = 1
         self.slot_set['turn'] = {}
         self.slot_set['turn'] = self.turn
+        self.slot_set['rapport_built'] = None
         self.count_slots = dialog_config.count_slots
         self.count_reco = {}
         for c_slot in self.count_slots:
@@ -48,9 +49,11 @@ class StateTracker:
         if agent_action:
             if agent_action['phase'] != self.phase:
                 self.phase = agent_action['phase']
-                print("-" * 50, end='')
-                print(self.phase, end='')
-                print("-" * (50 - len(self.phase)))
+                self.slot_set['phase'] = self.phase
+                self.slot_set['prev_feedback'] = None
+                # print("-" * 50, end='')
+                # print(self.phase, end='')
+                # print("-" * (50 - len(self.phase)))
 
             act = agent_action['act']
             inform_slots = agent_action['inform_slots'].keys()
@@ -71,8 +74,13 @@ class StateTracker:
 
             if act == 'bye':
                 self.dialog_over = True
+                self.reward += (self.slot_set['turn'] / 2 - 1) * self.slot_set[
+                    'penalty']
 
             elif act == 'inform':
+                if 'feedback' in inform_slots:
+                    self.slot_set['prev_feedback'] = user_action['inform_slots']['feedback']
+
                 for slot in self.slot_set.keys():
                     if slot in inform_slots:
                         self.slot_set[slot] = user_action['inform_slots'][slot]

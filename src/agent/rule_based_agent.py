@@ -1,4 +1,5 @@
 from src import dialog_config
+import random
 
 
 class RuleBasedAgent:
@@ -18,11 +19,16 @@ class RuleBasedAgent:
         agent_action['phase'] = 'greetings'
         agent_action['request_slots'] = {}
         agent_action['inform_slots'] = {}
+
+        # (Uniformly) random social reasoner
+        N = len(dialog_config.agent_cs)
+        agent_action['CS'] = dialog_config.agent_cs[random.randrange(0, N-1)]
+
         self.current_action = agent_action
         self.max = {}
         pass
-        self.max['session'] = 3
-        self.max['person'] = 3
+        self.max['session'] = 5
+        self.max['person'] = 5
         return agent_action
 
     def next(self, user_action, state):
@@ -283,4 +289,9 @@ class RuleBasedAgent:
         agent_action['phase'] = phase
         agent_action['inform_slots'] = inform_slots
         agent_action['request_slots'] = request_slots
+
+        # (Uniformly) random social reasoner
+        N = len(dialog_config.agent_cs)
+        agent_action['CS'] = dialog_config.agent_cs[random.randrange(0, N-1)]
+
         return agent_action

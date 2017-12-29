@@ -19,9 +19,9 @@ class DialogArbiter:
         self.state_tracker.initialize(slot_set)
         self.agent_action = self.agent.initialize()
         self.user.initialize()
-        print("New dialog, user goal, user type:")
-        print(json.dumps(self.user.goal, indent=2))
-        print(json.dumps(self.user.type, indent=2))
+        # print("New dialog. User goal, user type:")
+        # print(json.dumps(self.user.goal, indent=2))
+        # print(json.dumps(self.user.type, indent=2))
 
         reward, dialog_over, state = self.state_tracker.update(
             agent_action=self.agent_action)
@@ -31,16 +31,16 @@ class DialogArbiter:
     def next(self):
         reward, dialog_over, state = self.state_tracker.update(
             agent_action=self.agent_action)
-        print("Agent: ", end="")
+        # print("Agent: ", end="")
         # print(self.agent_action)
-        dialog_config.print_info(self.agent_action)
+        # dialog_config.print_info(self.agent_action)
 
-        user_action = self.user.next(self.agent_action)
+        user_action = self.user.next(self.agent_action, state)
         reward, dialog_over, state = self.state_tracker.update(
             user_action=user_action)
         self.user_action = user_action
-        print("User: ", end="")
-        dialog_config.print_info(self.user_action)
+        # print("User: ", end="")
+        # dialog_config.print_info(self.user_action)
 
         if not dialog_over:
             agent_action = self.agent.next(self.user_action, state)
