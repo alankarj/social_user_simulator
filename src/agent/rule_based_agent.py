@@ -1,24 +1,26 @@
 from src import dialog_config
 import random
 
+console_width = 137  # Used for printing phase string
 
 class RuleBasedAgent:
-    def __init__(self):
+    def __init__(self, params=None):
         self.history = None
         self.phase = None
         self.current_action = None
         self.prev_action = None
         self.max = None
 
-    def initialize(self):
+    def initialize(self, state=None):
         self.history = {}
         self.phase = 'greetings'
         agent_action = {}
         pass
         agent_action['act'] = 'greeting'
         agent_action['phase'] = 'greetings'
-        agent_action['request_slots'] = {}
+        agent_action['request_slots'] = ''
         agent_action['inform_slots'] = {}
+        # self.print_phase()
 
         # (Uniformly) random social reasoner
         N = len(dialog_config.agent_cs)
@@ -31,10 +33,8 @@ class RuleBasedAgent:
         self.max['person'] = 5
         return agent_action
 
-    def next(self, user_action, state):
-        # print("This is the state I am in:")
-        # print(state)
-
+    def next(self, state):
+        user_action = state['user_action']
         self.prev_action = self.current_action
 
         user_act = user_action['act']
@@ -186,10 +186,11 @@ class RuleBasedAgent:
                                                      inform_slots,
                                                      request_slots)
 
-        # print("Next agent action: ")
-        # print(agent_action)
         self.current_action = agent_action
+        old_phase = self.phase
         self.phase = phase
+        # if self.phase != old_phase:
+        #     self.print_phase()
         return agent_action
 
     def process_recommendation(self, reco_type, alt_reco_type, state,
@@ -295,3 +296,7 @@ class RuleBasedAgent:
         agent_action['CS'] = dialog_config.agent_cs[random.randrange(0, N-1)]
 
         return agent_action
+
+    def print_phase(self):
+        phase = self.phase
+        print(phase.center(console_width, '-'))

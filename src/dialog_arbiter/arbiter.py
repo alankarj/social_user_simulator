@@ -1,86 +1,91 @@
 import json
 from src.dialog_arbiter.state_tracker import StateTracker
-from src.user_simulator.my_rule_based_user_sim import RuleBasedUserSimulator
-from src.agent.rule_based_agent import RuleBasedAgent
-from src import dialog_config
 
 
 class DialogArbiter:
-    def __init__(self, user, agent):
-        self.agent = agent
+    def __init__(self, user, agent, slot_set, param_state_tracker):
         self.user = user
-        self.dialog_over = False
-        self.reward = 0
+        self.agent = agent
         self.state_tracker = StateTracker()
-        self.agent_action = None
+
         self.user_action = None
+        self.agent_action = None
 
-    def initialize(self, slot_set):
-        self.state_tracker.initialize(slot_set)
-        self.agent_action = self.agent.initialize()
+        self.dialog_over = False
+        self.reward = None
+
+        self.s_t = None
+
+        self.slot_set = slot_set
+        self.param_state_tracker = param_state_tracker
+
+    def initialize(self):
+        dialog_over, state = self.state_tracker.initialize(self.slot_set,
+                                                           self.param_state_tracker)
+        self.s_t = state
+        self.agent_action = self.agent.initialize(state)
         self.user.initialize()
-        # print("New dialog. User goal, user type:")
-        # print(json.dumps(self.user.goal, indent=2))
-        # print(json.dumps(self.user.type, indent=2))
+        self.reward = 0
 
-        reward, dialog_over, state = self.state_tracker.update(
-            agent_action=self.agent_action)
-        # print("Agent: ", end="")
-        # dialog_config.print_info(self.agent_action)
+        print("New dialog. User goal, user type:")
+        print(json.dumps(self.user.goal, indent=2))
+        print(json.dumps(self.user.type, indent=2))
 
-    def next(self):
-        reward, dialog_over, state = self.state_tracker.update(
-            agent_action=self.agent_action)
-        # print("Agent: ", end="")
-        # print(self.agent_action)
-        # dialog_config.print_info(self.agent_action)
+    def next(self, record_training_data=True, print_info=True):
+        if print_info:
+            self.print_info(agent_action=self.agent_action)
+        self.state_tracker.update(agent_action=self.agent_action)
 
-        user_action = self.user.next(self.agent_action, state)
-        reward, dialog_over, state = self.state_tracker.update(
-            user_action=user_action)
+        user_action, r_t = self.user.next(self.agent_action)
+        self.reward += r_t
         self.user_action = user_action
-        # print("User: ", end="")
-        # dialog_config.print_info(self.user_action)
+
+        dialog_over, state = self.state_tracker.update(user_action=self.user_action)
+        if print_info:
+            self.print_info(user_action=self.user_action)
+            print("Reward: ", r_t)
+
+        s_tplus1 = state
+        if record_training_data:
+            self.agent.register_experience_replay_tuple(self.s_t,
+                                                        self.agent_action,
+                                                        r_t,
+                                                        s_tplus1, dialog_over)
+
+        self.s_t = s_tplus1
+        # print("State: ", json.dumps(state, indent=2))
 
         if not dialog_over:
-            agent_action = self.agent.next(self.user_action, state)
+            agent_action = self.agent.next(state)
             self.agent_action = agent_action
+            # print("Upcoming agent action: ", agent_action)
 
-        return reward, dialog_over, state
+        return self.reward, dialog_over, state
 
+    @staticmethod
+    def print_info(agent_action=None, user_action=None):
+        if agent_action:
+            print("Agent: ", end="")
+            action = agent_action
+        elif user_action:
+            print("User: ", end="")
+            action = user_action
 
-if __name__ == "__main__":
-    goal_type = "random"
-    user = RuleBasedUserSimulator(goal_type)
-    agent = RuleBasedAgent()
-    slot_set = dialog_config.slot_set
-    # print(slot_set)
-    arbiter = DialogArbiter(user, agent)
+        act = action['act']
 
-    arbiter.initialize(slot_set)
-    max_turns = 40
-    dialog_over = False
-    while not dialog_over:
-        reward, dialog_over, state = arbiter.next()
+        if act == 'inform':
+            act_slots = action[act + '_slots']
+            print(act, end='')
+            for slot in act_slots:
+                print('(' + str(slot) + '=' + str(act_slots[slot]), end='')
+            print(')', end='')
 
-    print()
-    print("STATS:")
-    print("Reward: " + str(reward))
-    print()
-    print("Turns: " + str(state['turn'] / 2 - 1))
-    print()
+        elif act == 'request':
+            act_slots = action[act + '_slots']
+            print(act, end='')
+            print('(' + act_slots, end='')
+            print(')', end='')
+        else:
+            print(act + '()', end='')
 
-    count_slots = dialog_config.count_slots
-    reward_slots = dialog_config.reward.keys()
-
-    for c_slot in count_slots:
-        print("Total " + c_slot + " recommendations: ", end="")
-        print(state[c_slot])
-        for r_slot in reward_slots:
-            if (r_slot == 'feedback'):
-                print("Feedback good count: " + str(state['num_accepted'][
-                                                        c_slot][r_slot]))
-            else:
-                print("Top-link message count: " + str(
-                    state['num_accepted'][c_slot][r_slot]))
-        print()
+        print(', CS: ', action['CS'])

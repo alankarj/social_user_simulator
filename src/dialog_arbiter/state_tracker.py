@@ -1,116 +1,64 @@
-from src import dialog_config
-
-
 class StateTracker:
     def __init__(self):
-        self.phase = None
-        self.turn = None
-
-        self.count_reco = None
-        self.num_accepted = None
-
-        self.reward = None
+        self.state = None
+        self.param = None
         self.dialog_over = None
 
-        self.count_slots = None
-        self.reward_slots = None
-        self.slot_set = None
+    def initialize(self, slot_set, param):
+        self.state = {k: '' for k in slot_set.keys()}
+        self.param = param
 
-    def initialize(self, slot_set):
-        self.slot_set = slot_set
-        self.turn = 1
-        self.slot_set['turn'] = {}
-        self.slot_set['turn'] = self.turn
-        self.slot_set['rapport_built'] = None
-        self.count_slots = dialog_config.count_slots
-        self.count_reco = {}
-        for c_slot in self.count_slots:
-            self.count_reco[c_slot] = 0
-            self.slot_set[c_slot] = self.count_reco[c_slot]
+        self.state['turn'] = 0
 
-        self.reward_slots = dialog_config.reward.keys()
-        self.num_accepted = {}
-        self.slot_set['num_accepted'] = {}
-        for c_slot in self.count_slots:
-            self.num_accepted[c_slot] = {}
-            self.slot_set['num_accepted'][c_slot] = {}
-            for r_slot in self.reward_slots:
-                self.num_accepted[c_slot][r_slot] = 0
-                self.slot_set['num_accepted'][c_slot][r_slot] = \
-                self.num_accepted[c_slot][r_slot]
+        count_slots = self.param['count_slots']
+        reward_slots = self.param['reward_slots']
+        for c_slot in count_slots:
+            self.state[c_slot] = 0
+        self.state['num_accepted'] = {}
+        for c_slot in count_slots:
+            self.state['num_accepted'][c_slot] = {}
+            for r_slot in reward_slots:
+                self.state['num_accepted'][c_slot][r_slot] = 0
 
-        self.reward = 0
         self.dialog_over = False
+        return self.dialog_over, self.state
 
     def update(self, agent_action=None, user_action=None):
-        self.turn += 1
-        self.slot_set['turn'] = self.turn
+        count_slots = self.param['count_slots']
+        reward_slots = self.param['reward_slots']
+
+        self.state['turn'] += 1
 
         if agent_action:
-            if agent_action['phase'] != self.phase:
-                self.phase = agent_action['phase']
-                self.slot_set['phase'] = self.phase
-                self.slot_set['prev_feedback'] = None
-                # print("-" * 50, end='')
-                # print(self.phase, end='')
-                # print("-" * (50 - len(self.phase)))
+            self.state['agent_action'] = agent_action
+            self.state['phase'] = agent_action['phase']
 
             act = agent_action['act']
             inform_slots = agent_action['inform_slots'].keys()
 
             if act == 'inform':
-                for slot in self.slot_set.keys():
+                for slot in count_slots:
                     if slot in inform_slots:
-                        self.slot_set[slot] = agent_action['inform_slots'][slot]
-
-                for slot in self.count_slots:
-                    if slot in inform_slots:
-                        self.count_reco[slot] += 1
-                        self.slot_set[slot] = self.count_reco[slot]
+                        self.state[slot] += 1
 
         elif user_action:
+            self.state['user_action'] = user_action
             act = user_action['act']
             inform_slots = user_action['inform_slots'].keys()
 
             if act == 'bye':
                 self.dialog_over = True
-                self.reward += (self.slot_set['turn'] / 2 - 1) * self.slot_set[
-                    'penalty']
 
             elif act == 'inform':
-                if 'feedback' in inform_slots:
-                    self.slot_set['prev_feedback'] = user_action['inform_slots']['feedback']
-
-                for slot in self.slot_set.keys():
+                for slot in self.state.keys():
                     if slot in inform_slots:
-                        self.slot_set[slot] = user_action['inform_slots'][slot]
+                        self.state[slot] = user_action['inform_slots'][slot]
 
-                for r_slot in self.reward_slots:
+                for r_slot in reward_slots:
                     if r_slot in inform_slots:
                         if user_action['inform_slots'][r_slot]:
-                            self.reward += dialog_config.reward[r_slot]
-                            for c_slot in self.count_slots:
-                                if self.phase == c_slot + "_recommendation":
-                                    self.num_accepted[c_slot][r_slot] += 1
-                                    self.slot_set['num_accepted'][c_slot][
-                                        r_slot] = self.num_accepted[c_slot][
-                                        r_slot]
+                            for c_slot in count_slots:
+                                if self.state['phase'] == c_slot + "_recommendation":
+                                    self.state['num_accepted'][c_slot][r_slot] += 1
 
-        # print(self.reward)
-        # print(self.num_accepted)
-        # print(self.num_accepted['person'])
-
-        return self.reward, self.dialog_over, self.slot_set
-
-
-if __name__ == "__main__":
-    state_tracker = StateTracker()
-    state_tracker.initialize()
-
-    agent_action = {}
-    pass
-    agent_action['act'] = 'inform'
-    agent_action['phase'] = 'session'
-    agent_action['inform_slots'] = {'send_msg_tlink': True}
-    agent_action['request_slots'] = ''
-    state_tracker.update(user_action=agent_action)
+        return self.dialog_over, self.state
