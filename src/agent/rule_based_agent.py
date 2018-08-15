@@ -1,7 +1,8 @@
-from src import dialog_config
+import dialog_config
 import random
 
 console_width = 137  # Used for printing phase string
+
 
 class RuleBasedAgent:
     def __init__(self, params=None):
@@ -294,6 +295,14 @@ class RuleBasedAgent:
         # (Uniformly) random social reasoner
         N = len(dialog_config.agent_cs)
         agent_action['CS'] = dialog_config.agent_cs[random.randrange(0, N-1)]
+
+        # if act == 'greeting':
+        #     if random.random() > 0.5:
+        #         agent_action['CS'] = 'SD'
+        #     else:
+        #         agent_action['CS'] = 'PR'
+        # if act == 'introduction':
+        #     agent_action['CS'] = 'QESD'
 
         return agent_action
 

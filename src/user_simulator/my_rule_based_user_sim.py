@@ -1,6 +1,9 @@
 import random
 import numpy as np
 import json
+from user_simulator.model import CategoricalEncoder, JointEstimator, SocialReasoner
+from model_params import *
+import torch
 
 num_reco_str = 'num_reco'
 primary_goal_str = 'primary_goal'
@@ -25,6 +28,17 @@ class RuleBasedUserSimulator:
         self.prev_user_action = None
         self.count_slots = None
         self.reward_slots = None
+        self.prev_cs_agent = None
+        self.prev_cs_user = None
+        self.prev_rapp_val = None
+        self.prev_ti_agent = None
+        self.enc = None
+        self.all_together = param_user['all_together']
+        self.weights_fname = None
+        self.thresh = param_user['thresh']
+        self.rapp_max = param_user['rapp_max']
+        self.rapp_min = param_user['rapp_min']
+        self.intention_types = None
 
     def initialize(self):
         self.prev_agent_action = None
@@ -61,6 +75,59 @@ class RuleBasedUserSimulator:
             self.int_state[c_slot] = 0
             self.int_state["violation_" + c_slot] = 0
 
+        # Previous initializations
+        self.prev_cs_agent = [["NULL"], ["NULL"]]
+        self.prev_cs_user = [["NULL"], ["NULL"]]
+        self.prev_ti_agent = [["NULL"], ["NULL"]]
+        self.prev_rapp_val = [0, 0]
+
+        cs_types = {}
+        self.intention_types = {}
+        cs_types['agent'] = ['ASN', 'ACK', 'SD', 'QESD', 'PR', 'HE', 'VSN', 'NONE']
+        cs_types['user'] = ['SD', 'QESD', 'PR', 'HE', 'VSN', 'NONE']
+        self.intention_types['agent'] = ['ack()', 'request(met_before)', 'take_selfie()', 'give_feedback()', 'tired()', 'request(selfie)', 'request(send_msg_tlink)', 'request(another_reco)',
+                                      'greeting()',
+                                    'request(first_time)', 'no_worries()', 'do()', 'request(interest)', 'thank()', 'bye()', 'request(goal)', 'send_msg()', 'request(feedback)', 'introduce()', 'glad()',
+                                    'sorry()', 'request(anything_else)', 'request(primary_goal)', 'other()', 'inform(info)', 'you()']
+
+        self.enc = {}
+        for p in ['agent', 'user']:
+            self.enc[p] = CategoricalEncoder(cs_types[p])
+        self.enc['agent_intention'] = CategoricalEncoder(self.intention_types['agent'])
+
+        # else:
+        #     if self.type[rapport_care_str]:
+        #         self.weights_fname_soc = 'weights_1.t7'
+        #     else:
+        #         self.weights_fname_soc = 'weights_0.t7'
+
+        if self.type[rapport_care_str]:
+            self.weights_fname_soc = 'weights_1_sr.t7'
+            weights_fname_re = 'weights_all_re.t7'
+            leaky_slope_sr = 0.5
+            leaky_slope_re = 0.1
+        else:
+            self.weights_fname_soc = 'weights_0_sr.t7'
+            weights_fname_re = 'weights_all_re.t7'
+            leaky_slope_sr = 0.1
+            leaky_slope_re = 0.1
+
+        if self.all_together == 1:
+            self.weights_fname_soc = 'weights_all_sr.t7'
+            weights_fname_re = 'weights_all_re.t7'
+            leaky_slope_sr = 0.1
+            leaky_slope_re = 0.1
+
+        # print(self.weights_fname_soc)
+        # print(weights_fname_re)
+        # weights_fname_re = 'weights_all_joint.t7'
+        self.je_soc = SocialReasoner(input_size, hidden_size, 6, leaky_slope_sr, window)
+        # self.je_soc = JointEstimator(input_size, hidden_size, output_size, leaky_slope_sr, window)
+        self.je_soc.load_state_dict(torch.load(data_path + self.weights_fname_soc, map_location='cpu'))
+
+        self.je_rapp = JointEstimator(42, hidden_size, output_size, leaky_slope_re, window)
+        self.je_rapp.load_state_dict(torch.load(data_path + weights_fname_re, map_location='cpu'))
+
 
     def generate_random_user_goal(self):
         user_goal_slots = self.param['user_goal_slots']
@@ -92,23 +159,31 @@ class RuleBasedUserSimulator:
             if len(user_type_slots[slot]) == 2:
                 binary_slots.append(slot)
 
-        binary_slots.remove(rapport_care_str)
+        # binary_slots.remove(rapport_care_str)
 
         # Pick a slot value according to the result of the biased coin toss
         for b_slot in binary_slots:
             r = random.random()
-            if prob_user_type[b_slot] > r:
+            if r < prob_user_type[b_slot]:
                 user_type[b_slot] = True
             else:
                 user_type[b_slot] = False
 
+        num_recos_index = 0
+        if user_type[rapport_care_str]:
+            num_recos_index = 1
+
+        if self.all_together == 1:
+            num_recos_index = 2
+
+        print("User type: ", num_recos_index)
+
         # Select the total number of recos using a multinomial distribution
-        x = np.random.multinomial(1, prob_user_type[num_reco_str])
+        x = np.random.multinomial(1, prob_user_type[num_reco_str][num_recos_index])
         num_reco = int(np.where(x == 1)[0][0] + 1)
         user_type[num_reco_str] = num_reco
         # Select the number of person recos using a multinomial distribution
-        x = np.random.multinomial(1, prob_user_type[num_reco_str + "_" +
-                                                    str(num_reco)])
+        x = np.random.multinomial(1, prob_user_type[num_reco_str + "_" + str(num_reco)][num_recos_index])
         num_person = int(np.where(x == 1)[0][0])
         num_session = num_reco - num_person
         user_type['num_person'] = num_person
@@ -134,12 +209,12 @@ class RuleBasedUserSimulator:
         else:
             user_type[time_str] = user_type_slots[time_str][2]
 
-        # Does the user care about building rapport or not?
-        r = random.random()
-        if prob_user_type[rapport_care_str][num_reco-1] > r:
-            user_type[rapport_care_str] = True
-        else:
-            user_type[rapport_care_str] = False
+        # # Does the user care about building rapport or not?
+        # r = random.random()
+        # if prob_user_type[rapport_care_str][num_reco-1] > r:
+        #     user_type[rapport_care_str] = True
+        # else:
+        #     user_type[rapport_care_str] = False
 
         # If the user cares about building rapport, it will apply a small per-
         # turn penalty only if it has less time. On the other hand, if the user
@@ -188,12 +263,40 @@ class RuleBasedUserSimulator:
         r_t += self.reward_t(user_action)
         return r_t
 
+    def get_agent_intention(self, agent_action):
+        act = agent_action['act']
+        req_slots = agent_action['request_slots']
+        inf_slots = agent_action['inform_slots']
+
+        if req_slots == '' and inf_slots == {}:
+            return act + '()'
+        elif req_slots != '' and inf_slots == {}:
+            return act + '(' + self.modify_req_slot(req_slots) + ')'
+        else:
+            return act + '(' + self.modify_inf_slot(inf_slots) + ')'
+
+    def modify_req_slot(self, req_slots):
+        if req_slots in ['goal_person', 'goal_session', 'goal_food']:
+            return 'goal'
+        else:
+            return req_slots
+
+    def modify_inf_slot(self, inf_slots):
+        islot = list(inf_slots.values())[0]
+        if islot in ['info_person', 'info_session']:
+            return 'info'
+        else:
+            return islot
+
     def update_agenda(self, agent_action):
         user_action = {}
         pass
         user_action['act'] = 'null'
         user_action['inform_slots'] = {}
         user_action['request_slots'] = ''
+
+        agent_intention = self.get_agent_intention(agent_action)
+        assert agent_intention in self.intention_types['agent']
 
         act = agent_action['act']
         cs = agent_action['CS']
@@ -205,23 +308,24 @@ class RuleBasedUserSimulator:
 
         # End the conversation if it becomes too long.
         if self.int_state['num_turns'] > self.max_turns:
+            print('came here')
             return self.abnormal_update('bye')
 
         # End the conversation if total number of times agent has asked for
         # feedback or send_msg_tlink or total recos exceeds the maximum
         # possible recos.
-        if self.int_state["violation_" + "total_reco"] + self.int_state[
-            "total_reco"] > self.max_recos:
+        if self.int_state["violation_" + "total_reco"] + self.int_state["total_reco"] > self.max_recos:
+            print('came here 1')
             return self.abnormal_update('bye')
 
         for c_slot in self.count_slots:
-            if self.int_state[c_slot] + self.int_state["violation_" + c_slot] > \
-                    self.max_recos:
+            if self.int_state[c_slot] + self.int_state["violation_" + c_slot] > self.max_recos:
+                print('came here 2')
                 return self.abnormal_update('bye')
 
         for r_slot in self.reward_slots:
-            if self.int_state[r_slot] + self.int_state["violation_" + r_slot]\
-                    > self.max_recos:
+            if self.int_state[r_slot] + self.int_state["violation_" + r_slot] > self.max_recos:
+                print('came here 3')
                 return self.abnormal_update('bye')
 
         # Check if any other constraint gets violated.
@@ -231,7 +335,7 @@ class RuleBasedUserSimulator:
                 for r_slot in self.reward_slots:
                     if request_slot == r_slot:
                         self.int_state["violation_" + r_slot] += 1
-
+                print(request_slot)
             if act == 'inform':
                 inform_slots = agent_action['inform_slots'].keys()
                 for c_slot in self.count_slots:
@@ -239,6 +343,7 @@ class RuleBasedUserSimulator:
                         self.int_state["violation_" + c_slot] += 1
                         self.int_state["violation_" + 'total_reco'] += 1
 
+                print('came here 5')
             return self.abnormal_update('constraint_violated')
 
         # Now, normal updates begin.
@@ -267,6 +372,8 @@ class RuleBasedUserSimulator:
             agent_cs_count += 1
 
         self.int_state['num_agent_cs'] = agent_cs_count
+        y_pred, user_cs = self.generate_conv_strat_data_driven(cs, agent_intention)
+        user_action['CS'] = y_pred, user_cs
 
         if act == 'greeting':
             user_action['act'] = 'greeting'
@@ -276,16 +383,14 @@ class RuleBasedUserSimulator:
 
         elif act == 'request':
             user_action['act'] = 'inform'
-            user_action['inform_slots'] = self.process_request_act(
-                agent_action)
+            user_action['inform_slots'] = self.process_request_act(agent_action)
 
-        user_action['CS'] = self.generate_conv_strat(user_action)
+        # user_action['CS'] = self.generate_conv_strat(user_action) # This needs to be replaced
         self.agenda.append(user_action)
 
         r_t += self.reward_t(user_action)
         self.prev_user_action = user_action
         return r_t
-
 
     def generate_conv_strat(self, user_action):
         cs_type = self.type[cs_type_str]
@@ -294,8 +399,7 @@ class RuleBasedUserSimulator:
         if user_act == 'inform':
             slot = list(user_action['inform_slots'].keys())[0]
 
-        always_sd_slots = ['first_time', 'met_before', 'interest',
-                           'primary_goal']
+        always_sd_slots = ['first_time', 'met_before', 'interest', 'primary_goal']
         cs_type_slots = ['feedback', 'send_msg_tlink']
 
         cs = "None"
@@ -333,8 +437,80 @@ class RuleBasedUserSimulator:
 
         return cs
 
-    def process_request_act(self, agent_action):
+    def generate_conv_strat_data_driven(self, agent_cs, agent_ti):
+        self.prev_cs_agent.pop(0)
+        if type(agent_cs) != list:
+            agent_cs = [agent_cs]
+        agent_cs = [acs.upper() for acs in agent_cs]
+        self.prev_cs_agent.append(agent_cs)
 
+        self.prev_ti_agent.pop(0)
+        if type(agent_cs) != list:
+            agent_ti = [agent_ti]
+        agent_ti = [ati.lower() for ati in agent_ti]
+        self.prev_ti_agent.append(agent_ti)
+
+        R = torch.Tensor(self.prev_rapp_val)[None, :]
+        U = torch.Tensor(np.array([self.enc['user'].fit(u) for u in self.prev_cs_user])).transpose(0, 1)[None, :, :]
+        A = torch.Tensor(np.array([self.enc['agent'].fit(a) for a in self.prev_cs_agent])).transpose(0, 1)[None, :, :]
+        AT = torch.Tensor(np.array([self.enc['agent_intention'].fit(at) for at in self.prev_ti_agent])).transpose(0, 1)[None, :, :]
+
+        rapp, prob_pred = self.je_rapp(U, A, R, AT)
+        self.prev_rapp_val.pop(0)
+        self.prev_rapp_val.append(self.clip(rapp))
+
+        # print(self.clip(rapp))
+        rapp, prob_pred = self.je_soc(U, A, R, AT)
+        y_pred, user_cs = self.get_user_cs(prob_pred.data.cpu().numpy())
+
+        self.prev_cs_user.pop(0)
+        self.prev_cs_user.append(user_cs)
+
+        return y_pred, user_cs
+
+        # print("Agent CS encoding: ", self.enc['agent'].fit([agent_cs.upper()]))
+
+    def clip(self, rapp):
+        if rapp < self.rapp_min:
+            return self.rapp_min
+        elif rapp > self.rapp_max:
+            return self.rapp_max
+        else:
+            return rapp.data.cpu().numpy()[0]
+
+    def get_user_cs(self, prob_pred):
+        y_pred = prob_pred.copy()
+        y_pred[prob_pred >= self.thresh] = 1
+        y_pred[prob_pred < self.thresh] = 0
+        return y_pred, self.enc['user'].unfit(y_pred)
+
+    def get_feedback(self):
+        rapp = self.prev_rapp_val[-1]
+        if rapp < 3:
+            cat = 1
+        elif rapp >= 3 and rapp < 4:
+            cat = 2
+        elif rapp >= 4 and rapp < 5:
+            cat = 3
+        else:
+            cat = 4
+
+        num_recos_index = 0
+        if self.type[rapport_care_str]:
+            num_recos_index = 1
+
+        if self.all_together == 1:
+            num_recos_index = 2
+
+        p = self.param['prob_user_type']['acceptance_' + str(cat)][num_recos_index]
+        r = random.random()
+        if r < p:
+            return rapp, True
+        else:
+            return rapp, False
+
+
+    def process_request_act(self, agent_action):
         slot = agent_action['request_slots']
         decision_points = self.param['decision_points']
         prob_funcs = self.param['prob_funcs']
@@ -361,21 +537,27 @@ class RuleBasedUserSimulator:
         for dp in decision_points:
             if slot == 'feedback' and self.int_state['rapport_built'] is None:
                 # Rapport built or not?
-                if self.int_state['num_agent_cs'] >= min_cs_turns_for_rapport:
+                if self.int_state['num_agent_cs'] >= min_cs_turns_for_rapport: # This needs to be replaced
                     if self.int_state['num_turns'] >= self.min_turns:
                         self.int_state['rapport_built'] = True
                 else:
                     self.int_state['rapport_built'] = False
             if slot == dp:
-                val = prob_funcs[slot](self.type, self.int_state)
+                if slot == 'feedback':
+                    rapp, val = self.get_feedback()
+                else:
+                    val = prob_funcs[slot](self.type, self.int_state)  # This needs to be updated
                 for r_slot in self.reward_slots:
                     if slot == 'feedback':
                         self.int_state['prev_feedback'] = val
                         self.int_state['f-s'] = True
                     if slot == 'send_msg_tlink':
                         self.int_state['f-s'] = False
-                return {slot: val}
 
+                if slot == 'feedback':
+                    return {slot: (rapp, val)}
+                else:
+                    return {slot: val}
 
     def reward_t(self, user_action):
         user_act = user_action['act']

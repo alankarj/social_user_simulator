@@ -1,5 +1,5 @@
 import json
-from src.dialog_arbiter.state_tracker import StateTracker
+from dialog_arbiter.state_tracker import StateTracker
 
 
 class DialogArbiter:
@@ -20,18 +20,17 @@ class DialogArbiter:
         self.param_state_tracker = param_state_tracker
 
     def initialize(self):
-        dialog_over, state = self.state_tracker.initialize(self.slot_set,
-                                                           self.param_state_tracker)
+        dialog_over, state = self.state_tracker.initialize(self.slot_set, self.param_state_tracker)
         self.s_t = state
         self.agent_action = self.agent.initialize(state)
         self.user.initialize()
         self.reward = 0
 
-        print("New dialog. User goal, user type:")
-        print(json.dumps(self.user.goal, indent=2))
-        print(json.dumps(self.user.type, indent=2))
+        # print("New dialog. User goal, user type:")
+        # print(json.dumps(self.user.goal, indent=2))
+        # print(json.dumps(self.user.type, indent=2))
 
-    def next(self, record_training_data=True, print_info=True):
+    def next(self, record_training_data=True, print_info=False):
         if print_info:
             self.print_info(agent_action=self.agent_action)
         self.state_tracker.update(agent_action=self.agent_action)
@@ -45,14 +44,13 @@ class DialogArbiter:
             self.print_info(user_action=self.user_action)
             print("Reward: ", r_t)
 
-        s_tplus1 = state
-        if record_training_data:
-            self.agent.register_experience_replay_tuple(self.s_t,
-                                                        self.agent_action,
-                                                        r_t,
-                                                        s_tplus1, dialog_over)
-
-        self.s_t = s_tplus1
+        # s_tplus1 = state
+        # if record_training_data:
+        #     self.agent.register_experience_replay_tuple(self.s_t,
+        #                                                 self.agent_action,
+        #                                                 r_t,
+        #                                                 s_tplus1, dialog_over)
+        # self.s_t = s_tplus1
         # print("State: ", json.dumps(state, indent=2))
 
         if not dialog_over:

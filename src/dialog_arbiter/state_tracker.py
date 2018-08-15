@@ -1,3 +1,5 @@
+import numpy as np
+
 class StateTracker:
     def __init__(self):
         self.state = None
@@ -21,6 +23,10 @@ class StateTracker:
                 self.state['num_accepted'][c_slot][r_slot] = 0
 
         self.dialog_over = False
+        self.state['cs_dist'] = np.zeros((1, 6))
+        self.state['rapp'] = {}
+        self.state['rapp'][0] = []
+        self.state['rapp'][1] = []
         return self.dialog_over, self.state
 
     def update(self, agent_action=None, user_action=None):
@@ -42,6 +48,8 @@ class StateTracker:
                         self.state[slot] += 1
 
         elif user_action:
+            cs = user_action['CS']
+            self.state['cs_dist'] += cs[0]
             self.state['user_action'] = user_action
             act = user_action['act']
             inform_slots = user_action['inform_slots'].keys()
@@ -56,7 +64,12 @@ class StateTracker:
 
                 for r_slot in reward_slots:
                     if r_slot in inform_slots:
-                        if user_action['inform_slots'][r_slot]:
+                        rapp, val = user_action['inform_slots'][r_slot]
+                        if val:
+                            self.state['rapp'][1].append(rapp)
+                        else:
+                            self.state['rapp'][0].append(rapp)
+                        if val:
                             for c_slot in count_slots:
                                 if self.state['phase'] == c_slot + "_recommendation":
                                     self.state['num_accepted'][c_slot][r_slot] += 1

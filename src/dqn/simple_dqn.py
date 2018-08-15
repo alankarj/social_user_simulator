@@ -1,4 +1,4 @@
-from src.dqn.estimator import Estimator
+from dqn.estimator import Estimator
 import os
 import tensorflow as tf
 import numpy as np

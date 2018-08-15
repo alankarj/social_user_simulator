@@ -1,5 +1,5 @@
-from src.sequence_classifier import classifiers
-from src import dict_reader
+from sequence_classifier import classifiers
+import dict_reader
 
 data_path = "/Users/alankar/Documents/cmu/code/social_user_simulator/src/data/"
 # All slots
@@ -34,7 +34,7 @@ true_turn_path = data_path + "true_turn.csv"
 reward = {}
 pass
 reward['feedback'] = 5
-reward['send_msg_tlink'] = 10
+# reward['send_msg_tlink'] = 10
 
 # Count tracking
 count_slots = ['session', 'person', 'food']
@@ -45,9 +45,13 @@ bool_slots = {'primary_goal': 0, 'goal_session': 1, 'goal_person': 2,
               'another_reco': 6}
 
 max_turns = 60  # Maximum agent turns allowed
-max_recos = 5
+max_recos = 6
 constraint_violation_penalty = -10
 min_turns = 8  # Minimum agent turns required to build rapport with a user
+all_together = 1
+thresh = 0.4
+rapp_max = 6
+rapp_min = 2
 
 # Cons
 
@@ -81,22 +85,29 @@ prob_user_type = {}
 pass
 prob_user_type['first_time'] = 0.5
 prob_user_type['met_before'] = 0.0
+prob_user_type['rapport_care'] = 0.35
+
 
 # Probability that user cares about building rapport indexed by the number of
 # recommendations the user is going to ask for (1 to 6).
-prob_user_type['rapport_care'] = [0.25, 0.5, 0.5, 0.58, 0.44, 0.5]
+# prob_user_type['rapport_care'] = [0.25, 0.5, 0.5, 0.58, 0.44, 0.5]
 # prob_user_type['rapport_care'] = [1, 1, 1, 1, 1, 1]
 # prob_user_type['rapport_care'] = [0, 0, 0, 0, 0, 0]
 
 # Probability distribution for total number of recos (1 to 6)
-prob_user_type['num_reco'] = [0.17, 0.23, 0.26, 0.17, 0.13, 0.04]
+prob_user_type['num_reco'] = [[0.13, 0.17, 0.26, 0.29, 0.11, 0.04], [0.22, 0.22, 0.17, 0.30, 0.09, 0], [0.18, 0.21, 0.28, 0.17, 0.12, 0.03]]
 # Probability distribution for total number of person recos (0 to num_reco)
-prob_user_type['num_reco_1'] = [0.5, 0.5]
-prob_user_type['num_reco_2'] = [0.125, 0.1875, 0.6875]
-prob_user_type['num_reco_3'] = [0.17, 0.33, 0.28, 0.22]
-prob_user_type['num_reco_4'] = [0.08, 0.08, 0.5, 0.25, 0.09]
-prob_user_type['num_reco_5'] = [0, 0, 0.11, 0.67, 0.22, 0]
-prob_user_type['num_reco_6'] = [0, 0, 0, 0, 1, 0, 0]
+prob_user_type['num_reco_1'] = [[0.71, 0.29], [0.2, 0.8], [0.5, 0.5]]
+prob_user_type['num_reco_2'] = [[0.22, 0.22, 0.56], [0, 0, 1], [0.14, 0.14, 0.72]]
+prob_user_type['num_reco_3'] = [[0.13, 0.29, 0.29, 0.29], [0.25, 0.5, 0.25, 0], [0.17, 0.33, 0.28, 0.22]]
+prob_user_type['num_reco_4'] = [[0, 0, 0.5, 0.25, 0.25], [0, 0.14, 0.57, 0.29, 0], [0, 0.09, 0.55, 0.27, 0.09]]
+prob_user_type['num_reco_5'] = [[0, 0, 0.2, 0.6, 0.2, 0], [0, 0, 0, 1, 0, 0], [0, 0, 0.125, 0.75, 0.125, 0]]
+prob_user_type['num_reco_6'] = [[0, 0, 0, 0, 0, 1, 0], [], [0, 0, 0, 0, 0, 1, 0]]
+
+prob_user_type['acceptance_1'] = [0.67, 0.5, 0.65]
+prob_user_type['acceptance_2'] = [0.6, 0.44, 0.56]
+prob_user_type['acceptance_3'] = [0.53, 0.68, 0.59]
+prob_user_type['acceptance_4'] = [0.75, 0.73, 0.74]
 
 # Probability distribution for user CS personality/types
 prob_user_type['cs_type'] = [0.25, 0.25, 0.25, 0.25]

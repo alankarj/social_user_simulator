@@ -1,8 +1,8 @@
 import random
-from src import dialog_config
+import dialog_config
 
 
-def get_prob_feedback_good(user_type, state):
+def get_prob_feedback_good(user_type, state): # This needs to be replaced (input: rapport, output: feedback)
     rapport_care = user_type['rapport_care']
     rapport_built = state['rapport_built']
     prob_feedback = dialog_config.prob_feedback
@@ -24,7 +24,7 @@ def get_prob_feedback_good(user_type, state):
         p = prob_feedback[index]['R1']
     else:
         n = int(total_recos)
-        print("Number of recos so far: ")
+        # print("Number of recos so far: ")
         # if n > 6:
         #     return False
         # if n == 0:
@@ -48,7 +48,7 @@ def get_prob_feedback_good(user_type, state):
     return feedback_good
 
 
-def get_prob_accept_msg(user_type, state):
+def get_prob_accept_msg(user_type, state): # This is same as feedback (needs to be replaced)
     phase = state['phase']
     rapport_built = state['rapport_built']
     rapport_care = user_type['rapport_care']
@@ -77,7 +77,7 @@ def get_prob_accept_msg(user_type, state):
     return accept_msg
 
 
-def get_prob_another_reco(user_type, state):
+def get_prob_another_reco(user_type, state):  # This will remain the same
     phase = state['phase']
     reco_type = phase.split('_recommendation')[0]
     another_reco = False

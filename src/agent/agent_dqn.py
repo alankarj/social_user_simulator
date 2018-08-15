@@ -1,7 +1,7 @@
 import numpy as np
 import random
-from src.agent.rule_based_agent import RuleBasedAgent
-from src.dqn.simple_dqn import SimpleDQN
+from agent.rule_based_agent import RuleBasedAgent
+from dqn.simple_dqn import SimpleDQN
 import math
 import json
 import tensorflow as tf
