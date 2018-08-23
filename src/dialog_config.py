@@ -22,14 +22,6 @@ sys_act_set = dict_reader.text_to_dict(sys_act_set_path)
 user_act_set_path = data_path + "user_act_set"
 user_act_set = dict_reader.text_to_dict(user_act_set_path)
 
-# List of agent CS
-agent_cs_set_path = data_path + "agent_cs_set"
-agent_cs_set = dict_reader.text_to_dict(agent_cs_set_path)
-
-# List of user acts
-user_cs_set_path = data_path + "user_cs_set"
-user_cs_set = dict_reader.text_to_dict(user_cs_set_path)
-
 # Dialog rewards
 reward = {}
 pass

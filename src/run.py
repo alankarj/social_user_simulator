@@ -145,8 +145,6 @@ if __name__ == "__main__":
     phase_set = dialog_config.phase_set
     agent_act_set = dialog_config.sys_act_set
     user_act_set = dialog_config.user_act_set
-    agent_cs_set = dialog_config.agent_cs_set
-    user_cs_set = dialog_config.user_cs_set
 
     agent = RuleBasedAgent()
     user = RuleBasedUserSimulator()
