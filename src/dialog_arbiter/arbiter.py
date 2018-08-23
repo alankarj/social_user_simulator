@@ -1,4 +1,3 @@
-import json
 from dialog_arbiter.state_tracker import StateTracker
 
 
@@ -6,66 +5,48 @@ class DialogArbiter:
     def __init__(self, user, agent, slot_set, param_state_tracker):
         self.user = user
         self.agent = agent
-        self.state_tracker = StateTracker()
-
-        self.user_action = None
-        self.agent_action = None
-
-        self.dialog_over = False
-        self.reward = None
-
-        self.s_t = None
-
         self.slot_set = slot_set
         self.param_state_tracker = param_state_tracker
 
+        self.state_tracker = StateTracker()
+        self.user_action = None
+        self.agent_action = None
+        self.rapport = None
+        self.dialog_over = False
+        self.reward = None
+        self.s_t = None
+
     def initialize(self):
-        dialog_over, state = self.state_tracker.initialize(self.slot_set, self.param_state_tracker)
-        self.s_t = state
-        self.agent_action = self.agent.initialize(state)
+        self.dialog_over, self.s_t = self.state_tracker.initialize(self.slot_set, self.param_state_tracker)
         self.user.initialize()
+        self.agent_action, self.rapport = self.agent.initialize()
         self.reward = 0
 
-        # print("New dialog. User goal, user type:")
-        # print(json.dumps(self.user.goal, indent=2))
-        # print(json.dumps(self.user.type, indent=2))
-
-    def next(self, record_training_data=True, print_info=False):
+    def next(self, print_info=False):
         if print_info:
             self.print_info(agent_action=self.agent_action)
-        self.state_tracker.update(agent_action=self.agent_action)
+        self.state_tracker.update(agent_action=self.agent_action, rapport=self.rapport)
 
-        user_action, r_t = self.user.next(self.agent_action)
+        self.user_action, r_t = self.user.next(self.agent_action, self.rapport)
         self.reward += r_t
-        self.user_action = user_action
 
-        dialog_over, state = self.state_tracker.update(user_action=self.user_action)
+        self.dialog_over, self.s_t = self.state_tracker.update(user_action=self.user_action)
+
         if print_info:
             self.print_info(user_action=self.user_action)
             print("Reward: ", r_t)
 
-        # s_tplus1 = state
-        # if record_training_data:
-        #     self.agent.register_experience_replay_tuple(self.s_t,
-        #                                                 self.agent_action,
-        #                                                 r_t,
-        #                                                 s_tplus1, dialog_over)
-        # self.s_t = s_tplus1
-        # print("State: ", json.dumps(state, indent=2))
+        if not self.dialog_over:
+            self.agent_action, self.rapport = self.agent.next(self.s_t)
 
-        if not dialog_over:
-            agent_action = self.agent.next(state)
-            self.agent_action = agent_action
-            # print("Upcoming agent action: ", agent_action)
-
-        return self.reward, dialog_over, state
+        return self.reward, self.dialog_over, self.s_t
 
     @staticmethod
     def print_info(agent_action=None, user_action=None):
-        if agent_action:
+        if agent_action is not None:
             print("Agent: ", end="")
             action = agent_action
-        elif user_action:
+        if user_action is not None:
             print("User: ", end="")
             action = user_action
 
@@ -83,7 +64,8 @@ class DialogArbiter:
             print(act, end='')
             print('(' + act_slots, end='')
             print(')', end='')
+
         else:
             print(act + '()', end='')
 
-        print(', CS: ', action['CS'])
+        print(', CS: ', action['CS'][1])

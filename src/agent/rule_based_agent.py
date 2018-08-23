@@ -1,38 +1,103 @@
 import dialog_config
-import random
+import model_params
+from model import JointEstimator, CategoricalEncoder
+import torch
+import numpy as np
+import common_func
 
-console_width = 137  # Used for printing phase string
+intention_str = 'intention'
 
 
 class RuleBasedAgent:
-    def __init__(self, params=None):
-        self.history = None
+    def __init__(self):
         self.phase = None
         self.current_action = None
         self.prev_action = None
         self.max = None
 
-    def initialize(self, state=None):
-        self.history = {}
-        self.phase = 'greetings'
-        agent_action = {}
-        pass
-        agent_action['act'] = 'greeting'
-        agent_action['phase'] = 'greetings'
-        agent_action['request_slots'] = ''
-        agent_action['inform_slots'] = {}
-        # self.print_phase()
+        self.sr = None
+        self.re = None
 
-        # (Uniformly) random social reasoner
-        N = len(dialog_config.agent_cs)
-        agent_action['CS'] = dialog_config.agent_cs[random.randrange(0, N-1)]
+        self.prev_cs_agent = None
+        self.prev_cs_user = None
+        self.prev_ti_agent = None
+        self.prev_rapp_val = None
 
-        self.current_action = agent_action
+        self.thresh = None
+
+    def initialize(self):
+        index = 0
+        sr_type = model_params.all_participants[0]
+
+        # Social Reasoner
+        model_type = model_params.all_participants[0]
+        self.sr = self.get_model(sr_type, model_type, index)
+
+        # Rapport Estimator
+        model_type = model_params.all_model_types[1]
+        index = 2
+        self.re = self.get_model(sr_type, model_type, index)
+
+        null_list = ["NULL"]
+        self.prev_cs_agent = [null_list, null_list]
+        self.prev_cs_user = [null_list, null_list]
+        self.prev_ti_agent = [null_list, null_list]
+        self.prev_rapp_val = [0, 0]
+
+        cs_types = model_params.cs_types
+        intention_types = model_params.intention_types
+
+        self.enc = {}
+        for p in model_params.all_participants:
+            self.enc[p] = CategoricalEncoder(cs_types[p])
+        self.enc[model_params.all_participants[0] + '_' + intention_str] = \
+            CategoricalEncoder(intention_types[model_params.all_participants[0]])
+
         self.max = {}
         pass
         self.max['session'] = 5
         self.max['person'] = 5
-        return agent_action
+
+        # Current values
+        self.phase = 'greetings'
+
+        # First agent action
+        agent_action = {}
+        pass
+        agent_action['act'] = 'greeting'
+        agent_action['phase'] = self.phase
+        agent_action['request_slots'] = ''
+        agent_action['inform_slots'] = {}
+
+        self.current_action = agent_action
+
+        agent_intention = common_func.get_agent_intention(agent_action)
+        agent_action['CS'] = self.generate_conv_strat_data_driven(null_list, agent_intention, print_info=False)
+
+        return agent_action, self.prev_rapp_val[0]
+
+    def get_model(self, sr_type, model_type, index, print_info=False):
+        feature_type = model_params.feature_type[model_type][index]
+        window_type = model_params.window_type[model_type][index]
+        input_size = model_params.get_input_size(feature_type, window_type)
+        hidden_dim = model_params.hidden_dim[model_type][index]
+        leaky_slope = model_params.leaky_slope[model_type][index]
+        output_size = model_params.get_output_size(model_type, sr_type)
+        model_fname = model_params.model_fname[model_type][index]
+        self.thresh = model_params.thresh[model_type][index]
+
+        if print_info:
+            print("Feature type: ", feature_type)
+            print("Window type: ", window_type)
+            print("Input size: ", input_size)
+            print("Hidden dimension: ", hidden_dim)
+            print("Leaky slope: ", leaky_slope)
+            print("Output size: ", output_size)
+
+        model = JointEstimator(input_size, hidden_dim, output_size, leaky_slope, window_type,
+                               feature_type, model_type)
+        model.load_state_dict(torch.load(dialog_config.data_path + model_fname, map_location='cpu'))
+        return model
 
     def next(self, state):
         user_action = state['user_action']
@@ -188,14 +253,16 @@ class RuleBasedAgent:
                                                      request_slots)
 
         self.current_action = agent_action
-        old_phase = self.phase
         self.phase = phase
-        # if self.phase != old_phase:
-        #     self.print_phase()
-        return agent_action
 
-    def process_recommendation(self, reco_type, alt_reco_type, state,
-                               user_action):
+        # Social Reasoner
+        cs = user_action['CS'][1]
+        agent_intention = common_func.get_agent_intention(agent_action)
+        agent_action['CS'] = self.generate_conv_strat_data_driven(cs, agent_intention, print_info=False)
+
+        return agent_action, self.prev_rapp_val[0]
+
+    def process_recommendation(self, reco_type, alt_reco_type, state, user_action):
         inform_slots = {}
         request_slots = ''
         user_act = user_action['act']
@@ -237,7 +304,6 @@ class RuleBasedAgent:
 
             else:
                 if state[reco_type] == 0 or user_inform_slots['another_reco']:
-                    #print(state[reco_type])
                     act = 'inform'
                     inform_slots = {reco_type: "info_" + reco_type}
                     agent_action = self.construct_action(act, phase,
@@ -284,28 +350,53 @@ class RuleBasedAgent:
 
         return agent_action, phase
 
-    def construct_action(self, act, phase, inform_slots, request_slots):
+    @staticmethod
+    def construct_action(act, phase, inform_slots, request_slots):
         agent_action = {}
         pass
         agent_action['act'] = act
         agent_action['phase'] = phase
         agent_action['inform_slots'] = inform_slots
         agent_action['request_slots'] = request_slots
-
-        # (Uniformly) random social reasoner
-        N = len(dialog_config.agent_cs)
-        agent_action['CS'] = dialog_config.agent_cs[random.randrange(0, N-1)]
-
-        # if act == 'greeting':
-        #     if random.random() > 0.5:
-        #         agent_action['CS'] = 'SD'
-        #     else:
-        #         agent_action['CS'] = 'PR'
-        # if act == 'introduction':
-        #     agent_action['CS'] = 'QESD'
-
         return agent_action
 
-    def print_phase(self):
-        phase = self.phase
-        print(phase.center(console_width, '-'))
+    def generate_conv_strat_data_driven(self, user_cs, agent_ti, print_info=False):
+        if print_info:
+            print("User CS (Agent): ", user_cs)
+            print("CS user: ", self.prev_cs_user)
+            print("CS agent: ", self.prev_cs_agent)
+            print("TS agent: ", self.prev_ti_agent)
+            print("Rapport: ", self.prev_rapp_val)
+
+        self.prev_cs_user.pop()
+        if type(user_cs) != list:
+            user_cs = [user_cs]
+        user_cs = [ucs.upper() for ucs in user_cs]
+        self.prev_cs_user.insert(0, user_cs)
+
+        self.prev_ti_agent.pop()
+        if type(agent_ti) != list:
+            agent_ti = [agent_ti]
+        agent_ti = [ati.lower() for ati in agent_ti]
+        self.prev_ti_agent.insert(0, agent_ti)
+
+        R = torch.Tensor(np.array(self.prev_rapp_val))[None, :]
+        U = torch.Tensor(np.array([self.enc['user'].fit(u) for u in self.prev_cs_user])).transpose(0, 1)[None, :, :]
+        A = torch.Tensor(np.array([self.enc['agent'].fit(a) for a in self.prev_cs_agent])).transpose(0, 1)[None, :, :]
+        AT = torch.Tensor(np.array([self.enc['agent_intention'].fit(at) for at in self.prev_ti_agent])).transpose(0, 1)[None, :, :]
+
+        rapp = self.re(U, A, R, AT)
+        self.prev_rapp_val.pop()
+        self.prev_rapp_val.insert(0, common_func.clip(rapp[0][0]))
+
+        prob_pred = self.sr(U, A, R, AT)
+        y_pred, agent_cs = common_func.get_cs(self.enc['agent'], self.thresh, prob_pred.data.cpu().numpy())
+
+        self.prev_cs_agent.pop()
+        self.prev_cs_agent.insert(0, agent_cs)
+
+        if print_info:
+            print("Agent CS (Agent): ", agent_cs)
+            print("###########################################################")
+
+        return y_pred, agent_cs
