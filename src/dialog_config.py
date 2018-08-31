@@ -2,8 +2,8 @@ from sequence_classifier import classifiers
 import dict_reader
 
 num_dialogs = 500
-all_together = False
-max_iter = 50
+all_together = True
+max_iter = 1
 
 data_path = "/Users/alankar/Documents/cmu/code/social_user_simulator/src/data/"
 # All slots
