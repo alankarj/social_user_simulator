@@ -1,7 +1,8 @@
 # A User Simulator Architecture for Socially-Aware Conversational Agents
+This repository contains the code and dataset for [this paper](https://dl.acm.org/citation.cfm?id=3267916). You can use it to simulate intent-level conversations between a social simulated user and a socially-aware agent. Please find details of the architecture and the dataset in the paper.
 
 # Datasets and models
-The user simulator RE and SR models have been trained using prelim-analysis repo. In the following, <cluster_id> can take values in {0, 1, 'all'}, where 0 is P-Type, 1 is I-Type and 'all' is full dataset.
+The user simulator RE and SR models have been trained using [prelim-analysis](https://github.com/alankarj/prelim-analysis) repo. In the following, <cluster_id> can take values in {0, 1, 'all'}, where 0 is P-Type, 1 is I-Type and 'all' is full dataset.
 - **weights_re_<cluster_id>.t7**: Weights for rapport estimator.
 - **weights_sr_user_<cluster_id>.t7**: Weights for the user social reasoner.
 - **weights_sr_agent.t7**: Weights for the agent social reasoner.
@@ -15,6 +16,7 @@ Modify the dialog_config file: (a) all_together = True for unimodal, False for b
 
 # References
 Please cite the following paper if you found the code or the datasets in this or the prelim-analysis repositories useful.
+
 A. Jain, F. Pecune, Y. Matsuyama and J. Cassell, [A user simulator architecture for socially-aware conversational agents](https://dl.acm.org/citation.cfm?id=3267916)
 
 ```
