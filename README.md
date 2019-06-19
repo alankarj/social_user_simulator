@@ -15,7 +15,7 @@ Modify the dialog_config file: (a) all_together = True for unimodal, False for b
 
 # References
 Please cite the following paper if you found the code or the datasets in this or the prelim-analysis repositories useful.
-A. Jain, F. Pecune, Y. Matsuyama and J. Cassell, [A user simulator architecture for socially-aware conversational agents] (https://dl.acm.org/citation.cfm?id=3267916)
+A. Jain, F. Pecune, Y. Matsuyama and J. Cassell, [A user simulator architecture for socially-aware conversational agents](https://dl.acm.org/citation.cfm?id=3267916)
 
 ```
 @inproceedings{jain2018user,
