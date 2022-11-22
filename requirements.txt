@@ -9,7 +9,7 @@ numpy==1.14.3
 olefile==0.45.1
 pandas==0.22.0
 patsy==0.5.0
-Pillow==5.1.0
+Pillow==9.3.0
 pycparser==2.18
 pyparsing==2.2.0
 python-dateutil==2.7.2
