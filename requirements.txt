@@ -1,4 +1,4 @@
-certifi==2018.8.13
+certifi==2022.12.7
 cffi==1.11.5
 cycler==0.10.0
 kiwisolver==1.0.1
